@@ -16,7 +16,7 @@ export class AppService {
 			return {
 				id: language.id,
 				name: language.name,
-				created_at: language.created_at,
+				created_at: new Date(language.created_at),
 				visible: language.visible,
 				written_name: language.written_name,
 			};
