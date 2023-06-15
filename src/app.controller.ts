@@ -1,9 +1,9 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { AppService } from './app.service';
+import { LanguagesResponseDto, StartThreadRequestDto } from './dto';
+import { ApiResponse, ApiBody, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { OpenaiService } from './services/openai-service.service';
-import { ApiBearerAuth, ApiBody, ApiQuery } from '@nestjs/swagger';
-import { LanguagesResponseDto } from './dto';
-import { ApiResponse } from '@nestjs/swagger';
+import { ThreadService } from './services';
 import { ChatMessage } from './dto/openai';
 import { SupabaseJwtGuard } from 'supabase-jwt/supabase-jwt.guard';
 import { CurrentUser } from 'decorators/current-user.decorator';
@@ -12,7 +12,7 @@ import { User } from '@supabase/supabase-js';
 @Controller()
 @ApiBearerAuth('JWT-auth')
 export class AppController {
-    constructor(private readonly appService: AppService, private readonly openApiService: OpenaiService) { }
+    constructor(private readonly appService: AppService, private readonly openApiService: OpenaiService, private threadService: ThreadService) { }
 
     @Get()
     async getHello(): Promise<string> {
@@ -26,12 +26,18 @@ export class AppController {
         return await this.appService.getLanguages();
     }
     
+    @Post('start-thread')
+    @ApiBody({type: StartThreadRequestDto})
+    @UseGuards(SupabaseJwtGuard)
+    async startThread(@CurrentUser() user: User, @Body() startThreadRequestDto: StartThreadRequestDto): Promise<any> {
+        return await this.threadService.startThread(user, startThreadRequestDto);
+    }
     
     @Post('chat')
     @ApiBody({ type: ChatMessage })
     @UseGuards(SupabaseJwtGuard)
     @ApiQuery({name:'language',required:true, enum:['english','german','arabic']})
-    async startThread(@CurrentUser() user: User, @Body() newChatRequest: ChatMessage,@Query('language') language: 'english'|'german'|'arabic'='english'): Promise<any> {
+    async startNewThread(@CurrentUser() user: User, @Body() newChatRequest: ChatMessage,@Query('language') language: 'english'|'german'|'arabic'='english'): Promise<any> {
         return await this.openApiService.startNewThread({content: newChatRequest.content, role: 'user'},language);
     }
 }

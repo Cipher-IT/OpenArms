@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { SupabaseClientService } from './services';
+import { SupabaseClientService, ThreadService } from './services';
 import { HealthModule } from './health/health.module';
 import { OpenaiService } from './services/openai-service.service';
 import { ConfigModule } from '@nestjs/config';
@@ -11,6 +11,6 @@ import { ConfigModule } from '@nestjs/config';
     isGlobal: true,
   }), HealthModule],
   controllers: [AppController],
-  providers: [AppService, OpenaiService, SupabaseClientService],
+  providers: [AppService, SupabaseClientService, OpenaiService, ThreadService],
 })
 export class AppModule {}
