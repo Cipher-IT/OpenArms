@@ -20,13 +20,6 @@ export class ThreadConsumer {
             const chatResult = await this.openaiService.newMessage(threadId, newMessage, previousMessages, previouseChatSummary, language);
     
             await this.supabaseClientService.from('messages').insert({
-                content: newMessage.content,
-                role: 'user',
-                thread_id: threadId,
-                token_count: this.openaiService.getTextTokensCount(newMessage.content),
-            });
-    
-            await this.supabaseClientService.from('messages').insert({
                 content: chatResult.answer,
                 role: 'assistant',
                 thread_id: threadId,

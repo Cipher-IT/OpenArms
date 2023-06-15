@@ -86,6 +86,13 @@ export class ThreadService
             }
         });
 
+        await this.supabaseClientService.from('messages').insert({
+            content: newThreadMessageRequestDto.content,
+            role: 'user',
+            thread_id: thread.data.id,
+            token_count: this.openaiService.getTextTokensCount(newThreadMessageRequestDto.content),
+        });
+
         await this.threadQ.add('process-new-chat', {
             threadId: thread.data.id,
             newMessage: {

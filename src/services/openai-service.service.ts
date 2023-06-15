@@ -47,7 +47,7 @@ export class OpenaiService {
                 messages: messages.map((m) => ({ role: m.role, content: m.content })),
                 max_tokens: 1000,
             });
-
+            
             if (response.data.choices.length == 0) throw new BadRequestException('no response received');
             const answer = response.data.choices[0].message.content;
             const title = await this.generateTitle(answer);
