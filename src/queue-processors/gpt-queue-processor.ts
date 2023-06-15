@@ -31,13 +31,6 @@ export class GPTConsumer {
 
         await this.supabaseClientService.from('messages').insert({
             thread_id: thread_id,
-            content: content,
-            role: 'user',
-            token_count: this.openaiService.getTextTokensCount(content),
-        });
-
-        await this.supabaseClientService.from('messages').insert({
-            thread_id: thread_id,
             content: chatResult.answer,
             role: 'assistant',
             token_count: chatResult.tokens,

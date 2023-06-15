@@ -163,6 +163,13 @@ export class ThreadService
                 onConflict: 'id',
             }).select('id').single();
 
+            await this.supabaseClientService.from('messages').insert({
+                thread_id: thread_id,
+                content: content,
+                role: 'user',
+                token_count: this.openaiService.getTextTokensCount(content),
+            });
+
             await this.gptQueue.add('process-chat', {content: content, thread_id: thread.data.id, language: language.data.name, user_id: user_id});
             return {thread_id: thread.data.id};
         }
