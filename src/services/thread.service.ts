@@ -93,6 +93,13 @@ export class ThreadService
             token_count: this.openaiService.getTextTokensCount(newThreadMessageRequestDto.content),
         });
 
+        const response = await this.supabaseClientService.from('messages').insert({
+            content: '...',
+            role: 'assistant',
+            token_count: 0,
+            thread_id: thread.data.id,
+        }).select('id').single();
+
         await this.threadQ.add('process-new-chat', {
             threadId: thread.data.id,
             newMessage: {
@@ -102,6 +109,7 @@ export class ThreadService
             previousMessages: messages,
             previouseChatSummary: openai_summary,
             language: language.data.name,
+            response_id: response.data.id,
         });
     }
 
@@ -171,13 +179,20 @@ export class ThreadService
             }).select('id').single();
 
             await this.supabaseClientService.from('messages').insert({
-                thread_id: thread_id,
+                thread_id: thread.data.id,
                 content: content,
                 role: 'user',
                 token_count: this.openaiService.getTextTokensCount(content),
             });
 
-            await this.gptQueue.add('process-chat', {content: content, thread_id: thread_id, language: language.data.name, user_id: user_id});
+            const response = await this.supabaseClientService.from('messages').insert({
+                content: '...',
+                role: 'assistant',
+                thread_id: thread.data.id,
+                token_count: 0,
+            }).select('id').single();
+
+            await this.gptQueue.add('process-chat', {content: content, thread_id: thread.data.id, language: language.data.name, user_id: user_id, response_id: response.data.id});
             return {thread_id: thread.data.id};
         }
         catch (error) {
