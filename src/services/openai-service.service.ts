@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { OpenAIApi, Configuration } from 'openai';
 import { encode as GPT3Encode } from 'gpt-3-encoder';
 import { ChatResponseDto, ChatSummaryDto, ChatMessage } from 'dto/openai';
+import { SupabaseClientService } from './supabase-client.service';
 
 @Injectable()
 export class OpenaiService {
@@ -10,7 +11,7 @@ export class OpenaiService {
     /**
      *
      */
-    constructor() {
+    constructor(private readonly supabaseClientService: SupabaseClientService) {
         const configuration = new Configuration({
             organization: process.env.OPENAI_ORG,
             apiKey: process.env.OPENAI_API_KEY,
@@ -66,6 +67,7 @@ export class OpenaiService {
      * @throws {BadRequestException} If the messages are empty or do not contain at least one user message, or if no response is received from the API.
      */
     async newMessage(
+        threadId: string,
         newMessage: ChatMessage,
         previousMessages: ChatMessage[],
         previouseChatSummary?: ChatSummaryDto,
@@ -83,6 +85,11 @@ export class OpenaiService {
         ) {
             // summerize previouse messages with gpt3.5 turbo
             chatSummary = await this.summarizePreviouseMessages(previousMessages, previouseChatSummary);
+            await this.supabaseClientService.from('summaries').insert({
+                content: chatSummary.content,
+                token_used: chatSummary.tokens,
+                thread_id: threadId,
+            });
         }
         const systemPromptParts = [systemPrompt];
         if (chatSummary) {
@@ -115,19 +122,26 @@ export class OpenaiService {
 
         if (finalTokenCount > this.getMaxAllowedTokens()) throw new BadRequestException('Exceeded the token limit');
 
-        const response = await this.apiClient.createChatCompletion({
-            model: process.env.OPENAI_MODEL ?? 'gpt-4',
-            messages: messages,
-            max_tokens: 1000,
-        });
+        try {
+            const response = await this.apiClient.createChatCompletion({
+                model: process.env.OPENAI_MODEL ?? 'gpt-4',
+                messages: messages.map(m=>{return {role: m.role, content: m.content}}),
+                max_tokens: 1000,
+            });
+            
+            if (response.data.choices.length == 0) throw new BadRequestException('no response received');
+    
+            return {
+                answer: response.data.choices[0].message.content,
+                tokens: response.data.usage.total_tokens,
+                summary: chatSummary,
+            };
+        }
 
-        if (response.data.choices.length == 0) throw new BadRequestException('no response received');
+        catch (error) {
+            throw new BadRequestException(error.message);
+        }
 
-        return {
-            answer: response.data.choices[0].message.content,
-            tokens: response.data.usage.total_tokens,
-            summary: chatSummary,
-        };
     }
 
     getTextTokensCount(message: string): number {

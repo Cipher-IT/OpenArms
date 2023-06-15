@@ -9,7 +9,7 @@ export class SupabaseJwtGuard implements CanActivate {
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request: Request = context.switchToHttp().getRequest();
         const response: Response = context.switchToHttp().getResponse();
-        const user = await this.supabaseClientService.auth.getUser(request?.headers?.authorization.replace('Bearer ', ''));
+        const user = await this.supabaseClientService.auth.getUser(request?.headers?.authorization?.replace('Bearer ', ''));
         if(user.error || !user?.data?.user) {
           console.log('error', user.error.message);
           return false;
