@@ -13,6 +13,7 @@ export interface Database {
                 Row: {
                     created_at: string | null
                     id: number
+                    iso_code: string | null
                     name: string | null
                     visible: boolean
                     written_name: string | null
@@ -20,6 +21,7 @@ export interface Database {
                 Insert: {
                     created_at?: string | null
                     id?: number
+                    iso_code?: string | null
                     name?: string | null
                     visible?: boolean
                     written_name?: string | null
@@ -27,6 +29,7 @@ export interface Database {
                 Update: {
                     created_at?: string | null
                     id?: number
+                    iso_code?: string | null
                     name?: string | null
                     visible?: boolean
                     written_name?: string | null
@@ -101,21 +104,21 @@ export interface Database {
             threads: {
                 Row: {
                     created_at: string | null
-                    file_id: string | null
+                    file: Json | null
                     id: string
                     tite: string | null
                     user_id: string | null
                 }
                 Insert: {
                     created_at?: string | null
-                    file_id?: string | null
-                    id: string
+                    file?: Json | null
+                    id?: string
                     tite?: string | null
                     user_id?: string | null
                 }
                 Update: {
                     created_at?: string | null
-                    file_id?: string | null
+                    file?: Json | null
                     id?: string
                     tite?: string | null
                     user_id?: string | null
