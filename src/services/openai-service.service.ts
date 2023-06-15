@@ -23,6 +23,7 @@ export class OpenaiService {
         try {
             const systemPrompt = this.systemPrompt.replace('<language>', language);
             const systemPromptTokensCount = this.getTextTokensCount(systemPrompt);
+            const processedPrompt = await this.processPrompt(newMessage.content);
             const messages: ChatMessage[] = [
                 {
                     role: 'system',
@@ -32,8 +33,8 @@ export class OpenaiService {
             ];
             messages.push({
                 role: 'user',
-                content: newMessage.content,
-                tokens: this.getTextTokensCount(newMessage.content),
+                content: processedPrompt,
+                tokens: this.getTextTokensCount(processedPrompt),
             });
 
             const finalTokenCount = messages.reduce((acc, cur) => acc + cur.tokens, 0);
@@ -73,7 +74,8 @@ export class OpenaiService {
     ): Promise<ChatResponseDto> {
         const systemPrompt = this.systemPrompt.replace('<language>', language);
         const systemPromptTokensCount = this.getTextTokensCount(systemPrompt);
-        const previouseMessagesTokensCount = previousMessages.reduce((acc, cur) => acc + cur.tokens, 0);
+        const previouseMessagesTokensCount = previousMessages.reduce((acc, cur) => acc> cur.tokens?acc:cur.tokens, 0);
+        const processedPrompt = await this.processPrompt(newMessage.content);
         let chatSummary: { content: string; tokens: number } | undefined = undefined;
         if (
             systemPromptTokensCount +
@@ -107,8 +109,8 @@ export class OpenaiService {
 
         messages.push({
             role: 'user',
-            content: newMessage.content,
-            tokens: this.getTextTokensCount(newMessage.content),
+            content: processedPrompt,
+            tokens: this.getTextTokensCount(processedPrompt),
         });
 
         const finalTokenCount = messages.reduce((acc, cur) => acc + cur.tokens, 0);
@@ -174,5 +176,67 @@ export class OpenaiService {
         });
         if (response.data.choices.length == 0) throw new BadRequestException('no response received');
         return response.data.choices[0].message.content;
+    }
+
+    async summarizeText(
+        text: string
+    ): Promise<{ content: string; tokens: number }> {
+        const response = await this.apiClient.createChatCompletion({
+            model: process.env.OPENAI_SUMMARIZATION_MODEL ?? 'gpt-3.5-turbo',
+            messages: [
+                {
+                    role: 'system',
+                    content:
+                        'You are a chat summarization tool, You will provide a short sentance for the input with keeping the important details. you only summarieze any text related to the following topics: immegration, asylum, residency and work laws, legal documents. if unrelated text is provided you will respond with only "Sorry the provided text is unrelated Topic /end"',
+                },
+                {
+                    role: 'user',
+                    content: `summarize the follwing text\n ${text}`,
+                },
+            ],
+            max_tokens: 1000,
+        });
+        return {
+            content: response.data.choices[0].message.content,
+            tokens: this.getTextTokensCount(response.data.choices[0].message.content),
+        };
+    }
+
+    async processPrompt(prompt: string): Promise<string> {
+        // remove multiple new lines
+        prompt = prompt.replace(/\n\s*\n/g, '\n');
+        // remove multiple spaces
+        prompt = prompt.replace(/\s\s+/g, ' ');
+        // remove multiple tabs
+        prompt = prompt.replace(/\t\t+/g, '\t');
+
+        // count tokens
+        const tokensCount = this.getTextTokensCount(prompt);
+
+        if (tokensCount < 4000)
+            return prompt;
+        // split prompt into parts of 4000 tokens
+        const parts = [];
+        let part = '';
+        for (const line of prompt.split('\n')) {
+            if (this.getTextTokensCount(part) + this.getTextTokensCount(line) > 6000) {
+                parts.push(part);
+                part = '';
+            }
+            part += line + '\n';
+        }
+        if (part.length > 0) parts.push(part);
+        
+        // generate summarization for each part
+        const summaries: {content: string, tokens: number}[] = [];
+        for (const part of parts) {
+            const summary = await this.summarizeText(part);
+            if(summary.content.endsWith('/end')) break;
+            summaries.push(summary);
+        }
+
+        // join summaries
+        const summary = summaries.map(s => s.content).join('\n');
+        return summary;    
     }
 }
