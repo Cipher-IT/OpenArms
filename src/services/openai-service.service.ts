@@ -187,7 +187,7 @@ export class OpenaiService {
                 {
                     role: 'system',
                     content:
-                        'You are a chat summarization tool, You will provide a short sentance for the input with keeping the important details. you only summarieze any text related to the following topics: immegration, asylum, residency and work laws, legal documents. if unrelated text is provided you will respond with only "Sorry the provided text is unrelated Topic /end"',
+                        'You are a chat summarization tool, You will provide a short sentance for the input with keeping the important details. you only summarieze any text related to the following topics: immegration, asylum, residency and work laws, legal documents. if unrelated text is provided you will respond with only "Sorry I can not help you with that"',
                 },
                 {
                     role: 'user',
