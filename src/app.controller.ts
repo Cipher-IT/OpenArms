@@ -8,6 +8,7 @@ import { ChatMessage } from './dto/openai';
 import { SupabaseJwtGuard } from 'supabase-jwt/supabase-jwt.guard';
 import { CurrentUser } from 'decorators/current-user.decorator';
 import { User } from '@supabase/supabase-js';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller()
 @ApiBearerAuth('JWT-auth')
@@ -18,7 +19,7 @@ export class AppController {
     async getHello(): Promise<string> {
         return await this.appService.getHello();
     }
-    
+
     @Get('languages')
     @UseGuards(SupabaseJwtGuard)
     @ApiResponse({type: LanguagesResponseDto, isArray: true})
@@ -26,6 +27,7 @@ export class AppController {
         return await this.appService.getLanguages();
     }
     
+    @Throttle()
     @Post('start-thread')
     @ApiBody({type: StartThreadRequestDto})
     @UseGuards(SupabaseJwtGuard)

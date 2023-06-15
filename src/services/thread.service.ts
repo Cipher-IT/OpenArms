@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadGatewayException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadGatewayException, BadRequestException } from '@nestjs/common';
 import { SupabaseClientService } from './supabase-client.service';
 import * as tesseract from 'node-tesseract-ocr';
 import { StartThreadRequestDto } from 'dto';
@@ -6,16 +6,18 @@ import { User } from '@supabase/supabase-js';
 import * as pdfParse from 'pdf-parse';
 import { OpenaiService } from './openai-service.service';
 import { v4 as uuidv4 } from 'uuid';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
+import { NewThreadResponseDto } from 'dto/responses/new-thread-response.dto';
 
 @Injectable()
 export class ThreadService
 {
-    constructor(private supabaseClientService: SupabaseClientService, private openaiService: OpenaiService) {}
+    constructor(private supabaseClientService: SupabaseClientService, private openaiService: OpenaiService,@InjectQueue('gpt') private gptQueue: Queue) {}
 
-    async startThread(user: User, startThreadRequestDto: StartThreadRequestDto): Promise<any>{
+    async startThread(user: User, startThreadRequestDto: StartThreadRequestDto): Promise<NewThreadResponseDto>{
         if (!!startThreadRequestDto.content) {
-            await this.getChatResult(startThreadRequestDto.content, user.id);
-            return;
+            return await this.getChatResult(startThreadRequestDto.content, user.id);
         }
 
         const language = await this.supabaseClientService.from('languages').select('*').eq('id', startThreadRequestDto.language_id).single();
@@ -35,10 +37,10 @@ export class ThreadService
         }).select('id').single();
 
         const fileContent = await this.getFileContent(startThreadRequestDto.file_id, language.data.iso_code);
-        await this.getChatResult(fileContent, user.id, thread.data.id);
+        return await this.getChatResult(fileContent, user.id, thread.data.id);
     }
 
-    private async getFileContent(fileId: string, language: string): Promise<any> {
+    private async getFileContent(fileId: string, language: string): Promise<string> {
         const config = {
             lang: language,
             oem: 1,
@@ -70,13 +72,13 @@ export class ThreadService
                         const buffer = Buffer.from(arrayBuffer);
                         const pdf = await pdfParse(buffer);
                         if (pdf.text.trim().replace('\n', '').length <= 0) {
-                            throw new BadGatewayException('File type not supported');
+                            throw new BadRequestException('Scanned Pdfs Are Not Supported');
                         }
-                        return pdf.text;
+                        return pdf?.text;
                     }
 
                 default:{
-                    throw new BadGatewayException('File type not supported');
+                    throw new BadRequestException('File type not supported');
                 }
 
             }
@@ -84,47 +86,30 @@ export class ThreadService
 
         catch (error) {
             console.log(`error: ${error}`);
-            throw new BadGatewayException('Error getting file content');
+            throw new BadRequestException('Error getting file content');
         }
     }
 
-    private async getChatResult(content: string, user_id: string, thread_id?: string): Promise<any> {
+    private async getChatResult(content: string, user_id: string, thread_id?: string): Promise<NewThreadResponseDto> {
         try {
 
             const user = await this.supabaseClientService.from('users').select('*').eq('uuid', user_id).single();
             
             const language = await this.supabaseClientService.from('languages').select('*').eq('id', user.data.language_id).single();
             
-            const chatResult = await this.openaiService.startNewThread({
-                content: content,
-                role: 'user',
-            }, language.data.name);
-    
             const thread = await this.supabaseClientService.from('threads').upsert({
                 id: thread_id,
-                tite: chatResult.title, //TODO: rename to title
+                tite: 'Processing', //TODO: rename to title
                 user_id: user_id,
             }, {
                 onConflict: 'id',
             }).select('id').single();
-    
-            await this.supabaseClientService.from('messages').insert(
-                {
-                    thread_id: thread.data.id,
-                    content: content,
-                    role: 'user',
-                    token_count: this.openaiService.getTextTokensCount(content),
-                });
-    
-            await this.supabaseClientService.from('messages').insert({
-                    thread_id: thread.data.id,
-                    content: chatResult.answer,
-                    role: 'assistant',
-                    token_count: chatResult.tokens,
-            });
+
+            await this.gptQueue.add('process-chat', {content: content, thread_id: thread.data.id, language: language.data.name, user_id: user_id});
+            return {thread_id: thread.data.id};
         }
         catch (error) {
-            throw new BadGatewayException('Error getting chat result');
+            throw new BadRequestException('Error getting chat result');
         }
     }
 }

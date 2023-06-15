@@ -13,6 +13,14 @@ services:
       - development.env
     networks:
       - open-arms-network
-
+    depends_on:
+      - redis
+  
+  redis:
+    image: redis:alpine
+    ports:
+      - '6379:6379'
+    networks:
+      - open-arms-network
 networks:
   open-arms-network:
