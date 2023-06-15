@@ -3,7 +3,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { SupabaseClientService } from './services';
 import { HealthModule } from './health/health.module';
-import { OpenaiServiceService } from './services/openai-service.service';
+import { OpenaiService } from './services/openai-service.service';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
@@ -11,6 +11,6 @@ import { ConfigModule } from '@nestjs/config';
     isGlobal: true,
   }), HealthModule],
   controllers: [AppController],
-  providers: [AppService, OpenaiServiceService, SupabaseClientService],
+  providers: [AppService, OpenaiService, SupabaseClientService],
 })
 export class AppModule {}
