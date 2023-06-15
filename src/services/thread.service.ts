@@ -1,11 +1,12 @@
-import { Injectable, NotFoundException, BadGatewayException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { SupabaseClientService } from './supabase-client.service';
 import * as tesseract from 'node-tesseract-ocr';
-import { StartThreadRequestDto } from 'dto';
+import { NewThreadMessageRequestDto, StartThreadRequestDto } from 'dto';
 import { User } from '@supabase/supabase-js';
 import * as pdfParse from 'pdf-parse';
 import { OpenaiService } from './openai-service.service';
 import { v4 as uuidv4 } from 'uuid';
+import { ChatMessage, ChatSummaryDto } from 'dto/openai';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { NewThreadResponseDto } from 'dto/responses/new-thread-response.dto';
@@ -13,7 +14,10 @@ import { NewThreadResponseDto } from 'dto/responses/new-thread-response.dto';
 @Injectable()
 export class ThreadService
 {
-    constructor(private supabaseClientService: SupabaseClientService, private openaiService: OpenaiService,@InjectQueue('gpt') private gptQueue: Queue) {}
+    constructor(private supabaseClientService: SupabaseClientService, private openaiService: OpenaiService,
+    @InjectQueue('gpt') private gptQueue: Queue,
+    @InjectQueue('thread-queue') private threadQ: Queue,
+    ) {}
 
     async startThread(user: User, startThreadRequestDto: StartThreadRequestDto): Promise<NewThreadResponseDto>{
         if (!!startThreadRequestDto.content) {
@@ -38,6 +42,60 @@ export class ThreadService
 
         const fileContent = await this.getFileContent(startThreadRequestDto.file_id, language.data.iso_code);
         return await this.getChatResult(fileContent, user.id, thread.data.id);
+    }
+
+    async sendNewThreadMessage(user: User, newThreadMessageRequestDto: NewThreadMessageRequestDto): Promise<any> {
+        const thread = await this.supabaseClientService.from('threads').select('*').eq('id', newThreadMessageRequestDto.thread_id).single();
+        if (!thread.data.id) {
+            throw new NotFoundException('Thread not found');
+        }
+
+        const supa_user = await this.supabaseClientService.from('users').select('*').eq('uuid', user.id).single();
+        
+        if (!supa_user.data.id) {
+            throw new NotFoundException('User not found');
+        }
+
+        const language = await this.supabaseClientService.from('languages').select('*').eq('id', supa_user.data.language_id).single();
+
+        if (!language.data.id) {
+            throw new NotFoundException('Language not found');
+        }
+
+        const supa_summary = await this.supabaseClientService.from('summaries').select('*').eq('thread_id', thread.data.id).order('created_at', { ascending: false }).limit(1).single();
+        let supa_messages;
+        let openai_summary: ChatSummaryDto;
+        
+        if (!!supa_summary.data?.id) {
+            supa_messages = await this.supabaseClientService.from('messages').select('*').eq('thread_id', thread.data.id).gt('timestamp', supa_summary.data.created_at).order('timestamp', { ascending: true });
+            openai_summary = {
+                content: supa_summary.data?.content,
+                tokens: supa_summary.data?.token_used,
+                createdAt: new Date(supa_summary.data?.created_at),
+            }  
+        }
+        
+        else {
+            supa_messages = await this.supabaseClientService.from('messages').select('*').eq('thread_id', thread.data.id).order('timestamp', { ascending: true });
+        }
+        
+        const messages: ChatMessage[] = supa_messages.data.map((message) => {
+            return {
+                content: message.content,
+                role: message.role,
+            }
+        });
+
+        await this.threadQ.add('process-new-chat', {
+            threadId: thread.data.id,
+            newMessage: {
+                content: newThreadMessageRequestDto.content,
+                role: 'user',
+            },
+            previousMessages: messages,
+            previouseChatSummary: openai_summary,
+            language: language.data.name,
+        });
     }
 
     private async getFileContent(fileId: string, language: string): Promise<string> {

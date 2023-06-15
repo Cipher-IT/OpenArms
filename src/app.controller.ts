@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { AppService } from './app.service';
-import { LanguagesResponseDto, StartThreadRequestDto } from './dto';
+import { LanguagesResponseDto, NewThreadMessageRequestDto, StartThreadRequestDto } from './dto';
 import { ApiResponse, ApiBody, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { OpenaiService } from './services/openai-service.service';
 import { ThreadService } from './services';
@@ -42,5 +42,12 @@ export class AppController {
     @ApiQuery({name:'language',required:true, enum:['english','german','arabic']})
     async startNewThread(@CurrentUser() user: User, @Body() newChatRequest: ChatMessage,@Query('language') language: 'english'|'german'|'arabic'='english'): Promise<any> {
         return await this.openApiService.startNewThread({content: newChatRequest.content, role: 'user'},language);
+    }
+
+    @Post('new-thread-message')
+    @ApiBody({ type: NewThreadMessageRequestDto })
+    @UseGuards(SupabaseJwtGuard)
+    async sendNewThreadMessage(@CurrentUser() user: User, @Body() newThreadMessageRequestDto: NewThreadMessageRequestDto): Promise<any> {
+        return await this.threadService.sendNewThreadMessage(user, newThreadMessageRequestDto);
     }
 }

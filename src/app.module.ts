@@ -9,6 +9,7 @@ import { BullModule } from '@nestjs/bull';
 import { GPTConsumer } from 'queue-processors/gpt-queue-processor';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { ThreadConsumer } from 'queue-processors';
 @Module({
   imports: [ConfigModule.forRoot({ envFilePath: [`${process.env.NODE_ENV}.env`, '.env', 'keys.env'],
     isGlobal: true,
@@ -27,6 +28,13 @@ import { APP_GUARD } from '@nestjs/core';
       backoff: { type: 'exponential', delay: 1000 },
   }
   }),
+  BullModule.registerQueue({
+      name: 'thread-queue',
+    defaultJobOptions: {
+      attempts: 1,
+      backoff: { type: 'exponential', delay: 1000 },
+  }
+  }),
   ThrottlerModule.forRoot({
     ttl: 60*60*3,
     limit: 25,
@@ -36,7 +44,7 @@ import { APP_GUARD } from '@nestjs/core';
   providers: [AppService, SupabaseClientService, OpenaiService, ThreadService, GPTConsumer, {
     provide: APP_GUARD,
     useClass: ThrottlerGuard
-  }
+  }, ThreadConsumer,
   ],
 })
 export class AppModule {}

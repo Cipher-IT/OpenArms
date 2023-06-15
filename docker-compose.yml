@@ -20,8 +20,12 @@ services:
     image: redis:alpine
     networks:
       - open-arms-network
+    ports:
+      - '6377:6379'
     volumes:
       - redis-data:/data
     restart: unless-stopped
 networks:
   open-arms-network:
+volumes:
+  redis-data:
