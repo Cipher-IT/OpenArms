@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseClientService } from './services';
+import { LanguagesResponseDto } from './dto';
 
 @Injectable()
 export class AppService {
@@ -9,8 +10,16 @@ export class AppService {
 		return 'Hello World!';
 	}
 
-	async getLanguages(): Promise<any> {
-		const languages = await this.supabaseClientService.from('languages').select('*');
-		return JSON.stringify(languages.data);
+	async getLanguages(): Promise<LanguagesResponseDto[]> {
+		const languages = await this.supabaseClientService.from('languages').select('*').filter('visible', 'eq', true);
+		return languages.data.map((language) => {
+			return {
+				id: language.id,
+				name: language.name,
+				created_at: new Date(language.created_at),
+				visible: language.visible,
+				written_name: language.written_name,
+			};
+		});
 	}
 }

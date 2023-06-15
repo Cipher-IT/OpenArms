@@ -1,7 +1,9 @@
 import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
 import { AppService } from './app.service';
 import { OpenaiService } from './services/openai-service.service';
-import { ApiBody, ApiProperty, ApiQuery } from '@nestjs/swagger';
+import { ApiBody, ApiQuery } from '@nestjs/swagger';
+import { LanguagesResponseDto } from './dto';
+import { ApiResponse } from '@nestjs/swagger';
 import { ChatMessage } from './dto/openai';
 
 @Controller()
@@ -14,7 +16,8 @@ export class AppController {
     }
 
     @Get('languages')
-    async getTest(): Promise<any> {
+    @ApiResponse({type: LanguagesResponseDto, isArray: true})
+    async getLanguages(): Promise<LanguagesResponseDto[]> {
         return await this.appService.getLanguages();
     }
 
