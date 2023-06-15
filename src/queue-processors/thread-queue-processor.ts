@@ -15,16 +15,16 @@ export class ThreadConsumer {
     @Process({name:'process-new-chat'})
     async generateNewThreadResponse(job: Job<ThreadJob>) {
         try {
-            const { threadId, newMessage, previousMessages, previouseChatSummary, language } = job.data;
+            const { threadId, newMessage, previousMessages, previouseChatSummary, language, response_id } = job.data;
     
             const chatResult = await this.openaiService.newMessage(threadId, newMessage, previousMessages, previouseChatSummary, language);
     
-            await this.supabaseClientService.from('messages').insert({
+            await this.supabaseClientService.from('messages').update({
                 content: chatResult.answer,
                 role: 'assistant',
                 thread_id: threadId,
                 token_count: chatResult.tokens,
-            });
+            }).eq('id', response_id);
 
             job.moveToCompleted('done', true)
         }

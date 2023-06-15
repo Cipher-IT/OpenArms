@@ -7,4 +7,5 @@ export type ThreadJob = {
     previousMessages: ChatMessage[],
     previouseChatSummary?: ChatSummaryDto,
     language: string,
+    response_id: string,
 }
