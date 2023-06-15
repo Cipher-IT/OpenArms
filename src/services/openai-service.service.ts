@@ -169,9 +169,11 @@ export class OpenaiService {
     }
 
     async generateTitle(message: string): Promise<string> {
+        if(message.trim() == "Sorry I can not help you with that")
+            return "No Title";
         const response = await this.apiClient.createChatCompletion({
             model: 'gpt-3.5-turbo',
-            messages: [{ role: 'user', content: `${message}\n\nTitle:` }],
+            messages: [{role:'system','content':'you are a tool that gives a title for provided text, You will respond with short title, with maximum words count of Five, and if something wrong you return "New Chat"'},{ role: 'user', content: `${message}` }],
             max_tokens: 50,
         });
         if (response.data.choices.length == 0) throw new BadRequestException('no response received');
