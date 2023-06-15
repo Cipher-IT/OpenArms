@@ -18,6 +18,17 @@ async function bootstrap() {
 		.setDescription('Cipher - OpenArms API description')
 		.setVersion('1.0')
 		.addTag('opnarms')
+		.addBearerAuth(
+			{
+				type: 'http',
+				scheme: 'bearer',
+				bearerFormat: 'JWT',
+				name: 'JWT',
+				description: 'Enter JWT token',
+				in: 'header',
+			},
+			'JWT-auth', // This name here is important for matching up with @ApiBearerAuth() in your controller!
+		)
 		.build();
 	const document = SwaggerModule.createDocument(app, config);
 	SwaggerModule.setup('api/swagger', app, document);
