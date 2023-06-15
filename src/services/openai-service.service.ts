@@ -85,16 +85,18 @@ export class OpenaiService {
                 (!!previouseChatSummary ? previouseChatSummary.tokens : 0) >
             4000
         ) {
-            // summerize previouse messages with gpt3.5 turbo
+            
             chatSummary = await this.summarizePreviouseMessages(previousMessages, previouseChatSummary);
+        }
+        const systemPromptParts = [systemPrompt];
+        if (chatSummary) {
+            
             await this.supabaseClientService.from('summaries').insert({
                 content: chatSummary.content,
                 token_used: chatSummary.tokens,
                 thread_id: threadId,
             });
-        }
-        const systemPromptParts = [systemPrompt];
-        if (chatSummary) {
+            
             const chatSummaryContent = chatSummary.content;
             systemPromptParts.push(`\nprevious chat summary: ${chatSummaryContent}`);
         } else if (previouseChatSummary) {

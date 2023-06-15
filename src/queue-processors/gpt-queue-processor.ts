@@ -9,7 +9,7 @@ import { OpenaiService } from 'services/openai-service.service';
 export class GPTConsumer {
     constructor(private supabaseClientService: SupabaseClientService, private openaiService: OpenaiService) {}
 
-    @Process({name:'process-chat',concurrency: 10})
+    @Process({name:'process-chat'})
     async transcode(job: Job<any>) {
         console.log('GPTConsumer: ', job.data);
         const { thread_id, content, language } = job.data;

@@ -12,7 +12,7 @@ export class ThreadConsumer {
     constructor(private openaiService: OpenaiService, private supabaseClientService: SupabaseClientService) {
     }
 
-    @Process({name:'process-new-chat', concurrency: 4})
+    @Process({name:'process-new-chat'})
     async generateNewThreadResponse(job: Job<ThreadJob>) {
         try {
             const { threadId, newMessage, previousMessages, previouseChatSummary, language } = job.data;
@@ -32,7 +32,7 @@ export class ThreadConsumer {
                 thread_id: threadId,
                 token_count: chatResult.tokens,
             });
-            
+
             job.moveToCompleted('done', true)
         }
         catch (error) {
