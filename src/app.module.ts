@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { SupabaseClientService } from './services';
+import { SupabaseClientService, ThreadService } from './services';
 import { HealthModule } from './health/health.module';
 import { ConfigModule } from '@nestjs/config';
 
@@ -10,6 +10,6 @@ import { ConfigModule } from '@nestjs/config';
     isGlobal: true,
   }), HealthModule],
   controllers: [AppController],
-  providers: [AppService, SupabaseClientService],
+  providers: [AppService, SupabaseClientService, ThreadService],
 })
 export class AppModule {}

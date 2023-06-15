@@ -1,11 +1,12 @@
-import { Controller, Get } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put } from '@nestjs/common';
 import { AppService } from './app.service';
-import { LanguagesResponseDto } from './dto';
-import { ApiResponse } from '@nestjs/swagger';
+import { LanguagesResponseDto, StartThreadRequestDto } from './dto';
+import { ApiBody, ApiResponse } from '@nestjs/swagger';
+import { ThreadService } from './services';
 
 @Controller()
 export class AppController {
-    constructor(private readonly appService: AppService) { }
+    constructor(private readonly appService: AppService, private threadService: ThreadService) { }
 
     @Get()
     async getHello(): Promise<string> {
@@ -16,5 +17,11 @@ export class AppController {
     @ApiResponse({type: LanguagesResponseDto, isArray: true})
     async getLanguages(): Promise<LanguagesResponseDto[]> {
         return await this.appService.getLanguages();
+    }
+
+    @Post('start-thread')
+    @ApiBody({type: StartThreadRequestDto})
+    async startThread(@Body() startThreadRequestDto: StartThreadRequestDto): Promise<void> {
+        return await this.threadService.startThread(startThreadRequestDto);
     }
 }

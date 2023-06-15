@@ -17,7 +17,7 @@ async function bootstrap() {
 		.setTitle('OpenArms API')
 		.setDescription('Cipher - OpenArms API description')
 		.setVersion('1.0')
-		.addTag('opnarms')
+		.addTag('openarms')
 		.build();
 	const document = SwaggerModule.createDocument(app, config);
 	SwaggerModule.setup('api/swagger', app, document);
