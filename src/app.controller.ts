@@ -9,6 +9,7 @@ import { SupabaseJwtGuard } from 'supabase-jwt/supabase-jwt.guard';
 import { CurrentUser } from 'decorators/current-user.decorator';
 import { User } from '@supabase/supabase-js';
 import { Throttle } from '@nestjs/throttler';
+import { NewThreadResponseDto } from 'dto/responses/new-thread-response.dto';
 
 @Controller()
 @ApiBearerAuth('JWT-auth')
@@ -31,7 +32,7 @@ export class AppController {
     @Post('start-thread')
     @ApiBody({type: StartThreadRequestDto})
     @UseGuards(SupabaseJwtGuard)
-    async startThread(@CurrentUser() user: User, @Body() startThreadRequestDto: StartThreadRequestDto): Promise<any> {
+    async startThread(@CurrentUser() user: User, @Body() startThreadRequestDto: StartThreadRequestDto): Promise<NewThreadResponseDto> {
         return await this.threadService.startThread(user, startThreadRequestDto);
     }
     
