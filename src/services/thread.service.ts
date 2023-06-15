@@ -177,7 +177,7 @@ export class ThreadService
                 token_count: this.openaiService.getTextTokensCount(content),
             });
 
-            await this.gptQueue.add('process-chat', {content: content, thread_id: thread.data.id, language: language.data.name, user_id: user_id});
+            await this.gptQueue.add('process-chat', {content: content, thread_id: thread_id, language: language.data.name, user_id: user_id});
             return {thread_id: thread.data.id};
         }
         catch (error) {
