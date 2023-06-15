@@ -1,17 +1,18 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsNotEmpty } from "class-validator";
+import { IsNotEmpty, IsOptional, MaxLength } from "class-validator";
 
 export class StartThreadRequestDto {
 
     @ApiProperty({type: String})
-    @IsNotEmpty()
+    @IsOptional()
     file_id: string;
 
     @ApiProperty({type: Number})
-    @IsNotEmpty()
+    @IsOptional()
     language_id: number;
 
     @ApiProperty({type: String})
-    @IsNotEmpty()
-    user_id: string;
+    @IsOptional()
+    @MaxLength(8000)
+    content: string;
 }

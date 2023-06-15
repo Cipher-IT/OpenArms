@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadGatewayException } from '@nestjs/common';
 import { SupabaseClientService } from './supabase-client.service';
 import * as tesseract from 'node-tesseract-ocr';
 import * as fs from 'fs';
@@ -19,13 +19,10 @@ export class ThreadService
                 id: startThreadRequestDto.file_id,
                 language_iso_code: language.data[0].iso_code,
             },
-            user_id: startThreadRequestDto.user_id,
+            // user_id: startThreadRequestDto.user_id,
         });
 
         const fileContent = await this.getFileContent(startThreadRequestDto.file_id, language.data[0].iso_code);
-        console.log(fileContent);
-        // write file content to a file on desktop
-        fs.writeFile('C:\\Users\\james\\Desktop\\test.txt', fileContent, (err) => {});
     }
 
     private async getFileContent(fileId: string, language: string): Promise<any> {
@@ -37,15 +34,20 @@ export class ThreadService
 
         try {
             const file = await this.supabaseClientService.storage.from('thread_files').download(fileId);
+            
+            if (file.error) {
+                throw new NotFoundException('File not found');
+            }
+
             const arrayBuffer = await file.data.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
             const content = await tesseract.recognize(buffer, config);
             return content;
         }
-        
+
         catch (error) {
             console.log(`error: ${error}`);
-            throw new NotFoundException('File not found');
+            throw new BadGatewayException('Error getting file content');
         }
     }
 }
