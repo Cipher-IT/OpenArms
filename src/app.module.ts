@@ -16,8 +16,8 @@ import { ThreadConsumer } from 'queue-processors';
   }), HealthModule, 
   BullModule.forRoot({
     redis: {
-      host: 'localhost',
-      port: 6377,
+      host: 'redis',
+      port: 6379,
       username:'default',
     },
   }),
