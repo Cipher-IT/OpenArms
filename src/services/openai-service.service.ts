@@ -120,7 +120,16 @@ export class OpenaiService {
             tokens: this.getTextTokensCount(processedPrompt),
         });
 
-        const finalTokenCount = messages.reduce((acc, cur) => acc + cur.tokens, 0);
+        let finalTokenCount = 0;
+        if (messages.length > 0) {
+            finalTokenCount = messages.reduce((acc, cur) => {
+                if (typeof cur.tokens === 'number') {
+                    return acc + cur.tokens;
+                } else {
+                    return acc;
+                }
+            }, 0);
+        }
 
         if (finalTokenCount > this.getMaxAllowedTokens()) throw new BadRequestException('Exceeded the token limit');
 

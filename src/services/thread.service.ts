@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadGatewayException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { SupabaseClientService } from './supabase-client.service';
 import * as tesseract from 'node-tesseract-ocr';
 import { NewThreadMessageRequestDto, StartThreadRequestDto } from 'dto';
@@ -14,7 +14,10 @@ import { NewThreadResponseDto } from 'dto/responses/new-thread-response.dto';
 @Injectable()
 export class ThreadService
 {
-    constructor(private supabaseClientService: SupabaseClientService, private openaiService: OpenaiService,@InjectQueue('gpt') private gptQueue: Queue) {}
+    constructor(private supabaseClientService: SupabaseClientService, private openaiService: OpenaiService,
+    @InjectQueue('gpt') private gptQueue: Queue,
+    @InjectQueue('thread-queue') private threadQ: Queue,
+    ) {}
 
     async startThread(user: User, startThreadRequestDto: StartThreadRequestDto): Promise<NewThreadResponseDto>{
         if (!!startThreadRequestDto.content) {
@@ -80,28 +83,18 @@ export class ThreadService
             return {
                 content: message.content,
                 role: message.role,
-                createdAt: new Date(message.createdAt),
-                tokens: message.tokens,
             }
         });
-        
-        const chatResult = await this.openaiService.newMessage(thread.data.id, {
-            content: newThreadMessageRequestDto.content,
-            role: 'user',
-        }, messages, openai_summary, language.data.name);
 
-        await this.supabaseClientService.from('messages').insert({
-            content: newThreadMessageRequestDto.content,
-            role: 'user',
-            thread_id: thread.data.id,
-            token_count: this.openaiService.getTextTokensCount(newThreadMessageRequestDto.content),
-        });
-
-        await this.supabaseClientService.from('messages').insert({
-            content: chatResult.answer,
-            role: 'assistant',
-            thread_id: thread.data.id,
-            token_count: chatResult.tokens,
+        await this.threadQ.add('process-new-chat', {
+            threadId: thread.data.id,
+            newMessage: {
+                content: newThreadMessageRequestDto.content,
+                role: 'user',
+            },
+            previousMessages: messages,
+            previouseChatSummary: openai_summary,
+            language: language.data.name,
         });
     }
 
