@@ -2,8 +2,9 @@ name: Docker Image & deploy CI/CD
 
 on:
   push:
-    branches: [ "develop" ]
-
+    branches: [ "main" ]
+  workflow_dispatch:
+  
 jobs:
 
   build:
