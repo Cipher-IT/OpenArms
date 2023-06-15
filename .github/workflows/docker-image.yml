@@ -1,0 +1,18 @@
+name: Docker Image & deploy CI/CD
+
+on:
+  push:
+    branches: [ "develop" ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build the Docker image
+      run: docker build . --tag ${{ secrets.DOCKER_HUB_USERNAME }}/openarms:$(date +%s) --tag ${{ secrets.DOCKER_HUB_USERNAME }}/openarms:latest
+    - name: Login to DockerHub Registry
+      run: echo ${{ secrets.DOCKER_HUB_PASSWORD }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
+    - name: push image
+      run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/openarms:latest
