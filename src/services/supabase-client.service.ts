@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { Database } from 'src/schema/schema';
+import { Database } from 'schema/schema';
 
 @Injectable()
 export class SupabaseClientService extends SupabaseClient<Database> {

@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { OpenAIApi, Configuration } from 'openai';
 import { encode as GPT3Encode } from 'gpt-3-encoder';
-import { ChatResponseDto, ChatSummaryDto, ChatMessage } from 'src/dto/openai';
+import { ChatResponseDto, ChatSummaryDto, ChatMessage } from 'dto/openai';
 
 @Injectable()
 export class OpenaiService {
