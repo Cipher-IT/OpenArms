@@ -13,6 +13,15 @@ services:
       - development.env
     networks:
       - open-arms-network
-
+    depends_on:
+      - redis
+  
+  redis:
+    image: redis:alpine
+    networks:
+      - open-arms-network
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
 networks:
   open-arms-network:

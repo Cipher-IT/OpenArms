@@ -17,3 +17,24 @@ jobs:
       run: echo ${{ secrets.DOCKER_HUB_PASSWORD }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
     - name: push image
       run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/openarms:latest
+        
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - name: ssh-connect
+      uses: cross-the-world/ssh-pipeline@v1.2.0
+      with:
+        # ssh remote host
+        host: ${{ secrets.SERVER_SSH_HOST }}
+        # ssh remote port
+        port: ${{ secrets.SERVER_SSH_PORT }}
+        # ssh remote user
+        user: ${{ secrets.SERVER_SSH_USER }}
+        # ssh remote password
+        pass: ${{ secrets.SERVER_SSH_PASS }}
+        script:  |
+          cd ilab
+          docker-compose pull
+          docker-compose up -d
+          docker image prune -f
