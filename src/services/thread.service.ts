@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { StartThreadRequestDto } from 'src/dto';
 import { SupabaseClientService } from './supabase-client.service';
 import * as tesseract from 'node-tesseract-ocr';
 import * as fs from 'fs';
+import { StartThreadRequestDto } from 'dto';
 
 @Injectable()
 export class ThreadService
@@ -42,10 +42,10 @@ export class ThreadService
             const content = await tesseract.recognize(buffer, config);
             return content;
         }
+        
         catch (error) {
+            console.log(`error: ${error}`);
             throw new NotFoundException('File not found');
         }
-        // convert blob to buffer
-
     }
 }

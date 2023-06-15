@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  open-arms:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - development.env
+    networks:
+      - open-arms-network
+
+networks:
+  open-arms-network:
