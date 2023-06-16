@@ -199,31 +199,31 @@ export class ThreadService {
                 .select('*')
                 .eq('id', user.data.language_id)
                 .single();
-
-            const thread = await this.supabaseClientService
+                
+                var relatablity = await this.openaiService.relatablity(content);
+                const thread = await this.supabaseClientService
                 .from('threads')
                 .upsert(
                     {
                         id: thread_id,
-                        tite: 'Processing', //TODO: rename to title
+                        tite: relatablity?'Processing':'Unrelated Topic',
                         user_id: user_id,
                     },
                     {
                         onConflict: 'id',
                     },
-                )
-                .select('id')
-                .single();
-
-            await this.supabaseClientService.from('messages').insert({
-                thread_id: thread.data.id,
-                content: content,
-                role: 'user',
-                token_count: this.openaiService.getTextTokensCount(content),
-            });
-
-            var relatablity = await this.openaiService.relatablity(content);
-            if (relatablity) {
+                    )
+                    .select('id')
+                    .single();
+                    
+                    await this.supabaseClientService.from('messages').insert({
+                        thread_id: thread.data.id,
+                        content: content,
+                        role: 'user',
+                        token_count: this.openaiService.getTextTokensCount(content),
+                    });
+                    
+                    if (relatablity) {
                 const response = await this.supabaseClientService
                     .from('messages')
                     .insert({
