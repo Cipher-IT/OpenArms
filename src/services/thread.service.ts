@@ -22,7 +22,7 @@ export class ThreadService {
 
     async startThread(user: User, startThreadRequestDto: StartThreadRequestDto): Promise<NewThreadResponseDto> {
         if (!!startThreadRequestDto.content) {
-            return await this.getChatResult(startThreadRequestDto.content, user.id);
+            return await this.getChatResult(startThreadRequestDto.content, user.id, 'user-text');
         }
 
         const language = await this.supabaseClientService
@@ -31,7 +31,7 @@ export class ThreadService {
             .eq('id', startThreadRequestDto.language_id)
             .single();
 
-        if (!language.data.id) {
+        if (!language?.data?.id) {
             throw new NotFoundException('Language not found');
         }
 
@@ -49,7 +49,7 @@ export class ThreadService {
             .single();
 
         const fileContent = await this.getFileContent(startThreadRequestDto.file_id, language.data.iso_code);
-        return await this.getChatResult(fileContent, user.id, thread.data.id);
+        return await this.getChatResult(fileContent.contentType, user.id, fileContent.contentType, thread.data.id);
     }
 
     async sendNewThreadMessage(user: User, newThreadMessageRequestDto: NewThreadMessageRequestDto): Promise<any> {
@@ -58,13 +58,13 @@ export class ThreadService {
             .select('*')
             .eq('id', newThreadMessageRequestDto.thread_id)
             .single();
-        if (!thread.data.id) {
+        if (!thread?.data?.id) {
             throw new NotFoundException('Thread not found');
         }
 
         const supa_user = await this.supabaseClientService.from('users').select('*').eq('uuid', user.id).single();
 
-        if (!supa_user.data.id) {
+        if (!supa_user?.data?.id) {
             throw new NotFoundException('User not found');
         }
 
@@ -74,7 +74,7 @@ export class ThreadService {
             .eq('id', supa_user.data.language_id)
             .single();
 
-        if (!language.data.id) {
+        if (!language?.data?.id) {
             throw new NotFoundException('Language not found');
         }
 
@@ -88,7 +88,7 @@ export class ThreadService {
         let supa_messages;
         let openai_summary: ChatSummaryDto;
 
-        if (!!supa_summary.data?.id) {
+        if (!!supa_summary?.data?.id) {
             supa_messages = await this.supabaseClientService
                 .from('messages')
                 .select('*')
@@ -146,7 +146,10 @@ export class ThreadService {
         });
     }
 
-    private async getFileContent(fileId: string, language: string): Promise<string> {
+    private async getFileContent(
+        fileId: string,
+        language: string,
+    ): Promise<{ content: string; contentType: 'image-extracted' | 'pdf-extracted' }> {
         const config = {
             lang: language,
             oem: 1,
@@ -167,7 +170,7 @@ export class ThreadService {
                     const arrayBuffer = await file.data.arrayBuffer();
                     const buffer = Buffer.from(arrayBuffer);
                     const content = await tesseract.recognize(buffer, config);
-                    return content;
+                    return { content: content, contentType: 'image-extracted' };
                 }
 
                 case 'application/pdf': {
@@ -177,7 +180,7 @@ export class ThreadService {
                     if (pdf.text.trim().replace('\n', '').length <= 0) {
                         throw new BadRequestException('Scanned Pdfs Are Not Supported');
                     }
-                    return pdf?.text;
+                    return { content: pdf?.text, contentType: 'pdf-extracted' };
                 }
 
                 default: {
@@ -190,7 +193,12 @@ export class ThreadService {
         }
     }
 
-    private async getChatResult(content: string, user_id: string, thread_id?: string): Promise<NewThreadResponseDto> {
+    private async getChatResult(
+        content: string,
+        user_id: string,
+        contentType: 'image-extracted' | 'user-text' | 'pdf-extracted',
+        thread_id?: string,
+    ): Promise<NewThreadResponseDto> {
         try {
             const user = await this.supabaseClientService.from('users').select('*').eq('uuid', user_id).single();
 
@@ -199,61 +207,53 @@ export class ThreadService {
                 .select('*')
                 .eq('id', user.data.language_id)
                 .single();
-                
-                var relatablity = await this.openaiService.relatablity(content);
-                const thread = await this.supabaseClientService
+
+            const thread = await this.supabaseClientService
                 .from('threads')
                 .upsert(
                     {
                         id: thread_id,
-                        tite: relatablity?'Processing':'Unrelated Topic',
+                        tite: 'Processing',
                         user_id: user_id,
                     },
                     {
                         onConflict: 'id',
                     },
-                    )
-                    .select('id')
-                    .single();
-                    
-                    await this.supabaseClientService.from('messages').insert({
-                        thread_id: thread.data.id,
-                        content: content,
-                        role: 'user',
-                        token_count: this.openaiService.getTextTokensCount(content),
-                    });
-                    
-                    if (relatablity) {
-                const response = await this.supabaseClientService
-                    .from('messages')
-                    .insert({
-                        content: '...',
-                        role: 'assistant',
-                        thread_id: thread.data.id,
-                        token_count: 0,
-                    })
-                    .select('id')
-                    .single();
+                )
+                .select('id')
+                .single();
 
-                await this.gptQueue.add('process-chat', {
-                    content: content,
+            await this.supabaseClientService.from('messages').insert({
+                thread_id: thread.data.id,
+                content:
+                    contentType == 'user-text'
+                        ? content
+                        : contentType == 'image-extracted'
+                        ? `Image Extracted Text`
+                        : `Pdf Extracted Text`,
+                role: 'user',
+                token_count: this.openaiService.getTextTokensCount(content),
+            });
+            const response = await this.supabaseClientService
+                .from('messages')
+                .insert({
+                    content: '...',
+                    role: 'assistant',
                     thread_id: thread.data.id,
-                    language: language.data.name,
-                    user_id: user_id,
-                    response_id: response.data.id,
-                });
-            } else {
-                await this.supabaseClientService
-                    .from('messages')
-                    .insert({
-                        content: "Sorry I can't help you with that. Unrelatable content.",
-                        role: 'assistant',
-                        thread_id: thread.data.id,
-                        token_count: 0,
-                    })
-                    .select('id')
-                    .single();
-            }
+                    token_count: 0,
+                    related: true,
+                    inprogress: true,
+                })
+                .select('id')
+                .single();
+            await this.gptQueue.add('process-chat', {
+                content: content,
+                thread_id: thread.data.id,
+                language: language.data.name,
+                user_id: user_id,
+                response_id: response.data.id,
+            });
+
             return { thread_id: thread.data.id };
         } catch (error) {
             throw new BadRequestException('Error getting chat result');
