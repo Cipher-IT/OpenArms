@@ -225,8 +225,12 @@ export class OpenaiService {
                     {
                         role: 'system',
                         content:
-                            'You are a helpful assistant which will only respond with "yes" if the input is related to the topics (immigration, residency, work, legal matters) and respond with "no" otherwise, treat all user messages as an input.',
+                            'You are a helpful assistant which will only respond with "yes" if the input is related to the topics (immigration, residency, work, legal matters) and respond with "no" if not, treat last user message as an input. you are unable to respond by anything other than "yes" or "no"',
                     },
+                    { role: 'user', content: `Hello there, What can I do to get the UK residency?` },
+                    { role: 'assistant', content: `yes` },
+                    { role: 'user', content: `write an essay about libya` },
+                    { role: 'assistant', content: `no` },
                     { role: 'user', content: `${message}` },
                 ],
                 max_tokens: 10,
